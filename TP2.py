@@ -4,83 +4,91 @@ import gamelib
 ANCHO_VENTANA = 600
 ALTO_VENTANA = 600
 
-def cargar_nivel(archivo,nivel_titulo):
-    """Esta funcion permite cargar cada nivel del juego"""
-    with open(archivo) as n:
-        nivel = []
-        linea = n.readline()
-        linea = linea.rstrip("\n")
-        lvl = linea
-        lvl= lvl.split(" ")
-        lvl = int(lvl[1])
-        nivel_titulo = nivel_titulo.split(" ")
-        nivel_titulo = int(nivel_titulo[1])
-        siguiente_lvl = ""
-        linea = n.readline()
-
-        if linea[0] != " " and linea[0] != "#":
-            linea = n.readline()  
-             
-        linea= linea.rstrip("\n")
-        linea_con_mas_elementos = 0
-        while nivel_titulo != lvl:  
-
+def guardar_niveles_y_teclas (ruta_archivo_niveles,ruta_archivo_teclas):
+    try:
+        with open(ruta_archivo_niveles) as archivo:
+            linea = archivo.readline()
+            linea = linea.rstrip("\n")
+            niveles=[]
+            contador = 0
             while linea != "":
-                nivel.append(linea)
-                linea = n.readline()
-                linea = linea.rstrip("\n")
-
-                if linea == "":
-                   lvl = n.readline()
-                   linea = lvl  
-                   lvl= lvl.split(" ")
-                   lvl = int(lvl[1])
-                   break
-                
-        if lvl == nivel_titulo: 
-            nivel = []
-            cortar = False
-
-            while linea != "":   
-
-                while lvl != 1 and cortar == False:                  
-                    lvl = linea
-                    lvl = lvl.split(" ")
-                    lvl = int(lvl[1])
-                    linea = n.readline()
+                if linea[0] == "L":
+                    nivel = []
+                    nivel.append(contador)
+                    while linea != "":
+                        linea = archivo.readline()
+                        linea = linea.rstrip("\n")
+                        if linea != "" :
+                            if linea[0]!= "#" and linea[0]!=" ":
+                                linea = archivo.readline()
+                                linea = linea.rstrip("\n")                    
+                            nivel.append(linea)
+                    contador+=1
+                    niveles.append(nivel)
+                    linea = archivo.readline()
                     linea = linea.rstrip("\n")
-                    cortar = True
-                linea = linea.rstrip("\n")    
-                nivel.append(linea)
-                linea = n.readline()
+    except:
+        raise ValueError("No se encontro el archivo de niveles")
 
-                if linea != "":
-                    linea= linea.rstrip("\n")
-            nivel = soko.crear_grilla(nivel)
+    try:
+        with open(ruta_archivo_teclas) as archivo:
+            linea = archivo.readline()
+            linea = linea.rstrip("\n")
+            diccionario_teclas = {}
+            while linea != "": 
+                lista = linea.split("=")
+                if diccionario_teclas.get(lista[1].strip(),"?") == "?":
+                    diccionario_teclas.update({lista[1].strip():[lista[0].rstrip()]})
+                else:
+                    claves = diccionario_teclas.get(lista[1].strip()) 
+                    claves.append(lista[0].rstrip())
+                    diccionario_teclas.update({lista[1].strip():claves})
+                linea = archivo.readline()
+    except:
+        raise ValueError("No se encontro el archivo de teclas")
 
-            for i in range (0,len(nivel)):
-                if len(nivel[i]) > linea_con_mas_elementos:
-                        linea_con_mas_elementos = len(nivel[i])
-            for i in range (0,len(nivel)):
-                diferencia_de_elementos = linea_con_mas_elementos - len(nivel[i])
-                for c in range (0,diferencia_de_elementos):
-                    nivel[i].append("X")                         
-        linea = n.readline() 
-        siguiente_lvl = linea
-        return nivel,siguiente_lvl                
+        
+    return niveles,diccionario_teclas
 
-def juego_mostrar_nuevo_nivel(nivel):
+def llenar_espacios_grilla(nivel):
+    """esta funcion se encarga de llenar los espacios vacios que tiene la grilla"""
+    linea_con_mas_elementos = 0
+    for i in range (0,len(nivel)):
+        if len(nivel[i]) > linea_con_mas_elementos:
+                linea_con_mas_elementos = len(nivel[i])
+    for i in range (0,len(nivel)):
+        diferencia_de_elementos = (linea_con_mas_elementos - len(nivel[i]))
+        espacios_vacios = diferencia_de_elementos*" "
+        nivel[i] = nivel[i]+espacios_vacios 
+
+    return nivel        
+
+def cargar_nivel(nivel):
+    """Esta funcion permite cargar cada nivel del juego"""
+    niveles = guardar_niveles_y_teclas("niveles.txt","teclas.txt")[0]
+    if nivel == 155:
+        print("Pasaste todos los niveles!")
+        raise SystemExit    
+    nivel_cargado = niveles[nivel]
+    nivel_cargado.pop(0)
+    nivel_cargado = llenar_espacios_grilla(nivel_cargado)
+    nivel_cargado = soko.crear_grilla(nivel_cargado)
+    siguiente_lvl = nivel+1
+    return nivel_cargado,siguiente_lvl                
+
+def mostrar_siguiente_nivel(nivel):
     """Funcion creada para cargar y dibujar en la pantalla un nuevo nivel """
-    juego = cargar_nivel("niveles.txt",nivel)[0]
+    juego = cargar_nivel(nivel)[0]
     mostrar_juego_actualizado(juego,nivel)
 
 def mostrar_juego_actualizado(juego,nivel):
     """Funcion que permite actualizar el dibujo del juego en la pantalla"""
     columnas,filas = soko.dimensiones(juego)
-    ANCHO_VENTANA = columnas*64-6
-    ALTO_VENTANA = filas*64+29
+    ancho_caja = 64
+    ANCHO_VENTANA = columnas*ancho_caja-6
+    ALTO_VENTANA = filas*ancho_caja+29
     gamelib.resize(ANCHO_VENTANA,ALTO_VENTANA)
-    gamelib.draw_text(nivel,ANCHO_VENTANA/2,30)   
+    gamelib.draw_text( f"Nivel : {nivel+1}",ANCHO_VENTANA/2,30)   
     
     pos_y=40
     for i in range (0,filas):     
@@ -89,90 +97,81 @@ def mostrar_juego_actualizado(juego,nivel):
             gamelib.draw_image("img/ground.gif",pos_x,pos_y)               
             if soko.hay_pared(juego,c,i):
                 gamelib.draw_image("img/wall.gif",pos_x,pos_y)
-            elif soko.hay_caja(juego,c,i) and soko.hay_objetivo(juego,c,i):
+            if soko.hay_caja(juego,c,i):
                 gamelib.draw_image("img/box.gif",pos_x,pos_y)
-                gamelib.draw_image("img/goal.gif",pos_x,pos_y)
-            elif soko.hay_caja(juego,c,i):
-                gamelib.draw_image("img/box.gif",pos_x,pos_y)
-            elif soko.hay_jugador(juego,c,i):
+            if soko.hay_jugador(juego,c,i):
                 gamelib.draw_image("img/player.gif",pos_x,pos_y)
-            elif soko.hay_jugador(juego,c,i) and soko.hay_objetivo(juego,c,i):
-                gamelib.draw_image("img/player.gif",pos_x,pos_y) 
-                gamelib.draw_image("img/goal.gif",pos_x,pos_y)                       
-            elif soko.hay_objetivo(juego,c,i):
-                gamelib.draw_image("img/goal.gif",pos_x,pos_y)  
-             
-            pos_x =(c*64)+60
-        pos_y = (i*64)+100   
+            if soko.hay_objetivo(juego,c,i):
+                gamelib.draw_image("img/goal.gif",pos_x,pos_y) 
+
+            pos_x =(c*ancho_caja)+60
+
+        pos_y = (i*ancho_caja)+100   
 
 def juego_acualizar(juego,tecla,nivel):
     """funcion que permite actualizar el juego dependiendo de la tecla que se use"""
-    with open("teclas.txt") as f:
-        comando_correcto = False
-        juego_ganado = False
-        nueva_grilla = []
-        siguiente_nivel = ""
-        linea = f.readline()
-        linea = linea.rstrip("\n").split("=")
-        tecla_texto = linea[0]
-        direccion = list(linea[1])
-        direccion.remove("(")
-        direccion.remove(")") 
-        while linea != [""] and direccion[0]!="R" and direccion[0]!="P":
-            if direccion[2] == "-":
-                direccion_x = int(direccion[0])
-                direccion_y = int(direccion[2]+direccion[3])
-            elif direccion[0] == "-" :
-                direccion_x = int(direccion[0]+direccion[1])
-                direccion_y = int(direccion[3]) 
-            else:
-                direccion_y = int(direccion[2])
-                direccion_x = int(direccion[0])  
-            direccion = []
-            direccion.append(direccion_x)
-            direccion.append(direccion_y)     
-            direccion = tuple(direccion)
-            if tecla == tecla_texto:
-                    comando_correcto = True
-                    nueva_grilla = soko.mover(juego,direccion)    
-                    gamelib.play_sound('sounds/walk.wav') 
-                    if soko.juego_ganado(nueva_grilla) == True:
-                        juego_ganado = True
-                        gamelib.play_sound('sounds/win.wav')
-                        nueva_grilla = cargar_nivel("niveles.txt",nivel)[0]
-                        siguiente_nivel = cargar_nivel("niveles.txt",nivel)[1]
-                        break
-                    else:
-                        siguiente_nivel = nivel   
-            linea = f.readline()
-            if linea != [""] and direccion:
-                linea = linea.rstrip("\n").split("=") 
-                direccion = list(linea[1])
+    diccionario_teclas = guardar_niveles_y_teclas("niveles.txt","teclas.txt")[1]
+    comando_correcto = False
+    juego_ganado = False
+    reiniciar = False
+    salir = False
+    nueva_grilla = []
+    siguiente_nivel = ""
+    teclas_y_valores = list(diccionario_teclas.items())
+    for i in range (0,len(teclas_y_valores)):
+        if tecla in teclas_y_valores[i][1]:
+            direccion = teclas_y_valores[i][0]
+            comando_correcto = True
+            break
 
-                if direccion[0]!="R" and direccion[0]!="P":
-                    direccion.remove("(")
-                    direccion.remove(")")                   
-                    tecla_texto = linea[0]
-    if tecla != "r" and tecla != "Escape" and comando_correcto == False:
+    if comando_correcto:    
+        if direccion == "NORTE":
+            direccion = (0,-1)
+        elif direccion == "OESTE":
+            direccion = (-1,0)                
+        elif direccion == "SUR":
+            direccion = (0,1)
+        elif direccion == "ESTE":
+            direccion = (1,0)
+        elif direccion == "REINICIAR":
+            reiniciar = True
+        elif direccion == "SALIR" :
+            salir = True
+    else:
         return juego,nivel,juego_ganado
-                
-    if tecla == "r":
+     
+    if comando_correcto == True and salir is False and reiniciar is False:     
+        nueva_grilla = soko.mover(juego,direccion)    
+        gamelib.play_sound('sounds/walk.wav') 
+        if soko.juego_ganado(nueva_grilla) == True:
+            juego_ganado = True
+            gamelib.play_sound('sounds/win.wav')
+            nueva_grilla = cargar_nivel(nivel)[0]
+            siguiente_nivel = cargar_nivel(nivel)[1]
+        else:
+            siguiente_nivel = nivel 
+
+    if  salir:
+        print("Gracias por jugar soko_2.0")
+        raise SystemExit    
+         
+    if reiniciar :
         gamelib.play_sound('sounds/restart.wav')
-        nueva_grilla = cargar_nivel("niveles.txt",nivel)[0]
-        return nueva_grilla,nivel,juego_ganado            
-                
+        nueva_grilla = cargar_nivel(nivel)[0]
+        return nueva_grilla,nivel,juego_ganado   
+        
     return nueva_grilla,siguiente_nivel,juego_ganado 
 
 def main():
     # Inicializar el estado del juego
-    juego = cargar_nivel("niveles.txt","Level 1")[0]
-    nivel = "level 1"
+    juego = cargar_nivel(0)[0]
     juego_ganado = False
+    nivel = 0
     gamelib.resize(ANCHO_VENTANA, ALTO_VENTANA)
     while gamelib.is_alive():
         gamelib.draw_begin()
-        if juego_ganado:
-            juego_mostrar_nuevo_nivel(nivel)
+        if juego_ganado:           
+            mostrar_siguiente_nivel(nivel)
         else:
             mostrar_juego_actualizado(juego,nivel)
         # Dibujar la pantalla
